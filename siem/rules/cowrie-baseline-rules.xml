@@ -1,0 +1,105 @@
+<!--
+  Cowrie Honeypot — Baseline Detection Rules
+  honeypot-soc-lab | Author: Seif Allah Nazmy
+  
+  Phase 1 rules: universal SSH attack patterns observed on any honeypot.
+  These rules fire regardless of attacker origin or credentials used.
+  
+  Rule ID range: 100001–100010 (custom range, no conflict with Wazuh defaults)
+  
+  MITRE ATT&CK references included per rule.
+-->
+
+<group name="cowrie,honeypot,ssh">
+
+  <!-- ================================================================
+       RULE 100001: SSH Brute Force Attempt
+       Fires on every failed login attempt against the honeypot.
+       
+       MITRE: T1110.001 — Brute Force: Password Guessing
+       Tactic: Credential Access
+       Severity: Medium (level 6)
+       
+       Every failed login is logged by Cowrie as cowrie.login.failed.
+       This rule creates an alert for each attempt.
+  ================================================================ -->
+  <rule id="100001" level="6">
+    <decoded_as>json</decoded_as>
+    <field name="eventid">cowrie.login.failed</field>
+    <description>Honeypot: SSH brute force login attempt from $(src_ip) using username $(username)</description>
+    <mitre>
+      <id>T1110.001</id>
+    </mitre>
+    <group>authentication_failed,brute_force</group>
+  </rule>
+
+  <!-- ================================================================
+       RULE 100002: Successful Honeypot Login
+       Fires when an attacker successfully authenticates to Cowrie.
+       This is high severity — attacker is now in an interactive session.
+       
+       MITRE: T1110.001 — Brute Force: Password Guessing (success)
+       Tactic: Credential Access
+       Severity: High (level 10)
+       
+       Any successful login to a honeypot is inherently suspicious.
+       Real users should never be logging into this system.
+  ================================================================ -->
+  <rule id="100002" level="10">
+    <decoded_as>json</decoded_as>
+    <field name="eventid">cowrie.login.success</field>
+    <description>Honeypot: Successful SSH login from $(src_ip) using credentials $(username):$(password) — attacker now in interactive session</description>
+    <mitre>
+      <id>T1110.001</id>
+    </mitre>
+    <group>authentication_success,honeypot_compromise</group>
+  </rule>
+
+  <!-- ================================================================
+       RULE 100003: Post-Login Command Execution
+       Fires when an attacker types a command after logging in.
+       Requires interact_enabled = true in cowrie.cfg.
+       
+       MITRE: T1059 — Command and Scripting Interpreter
+       Tactic: Execution
+       Severity: High (level 10)
+       
+       Post-login commands reveal attacker intent:
+       - whoami, id, uname = system enumeration
+       - wget, curl = malware download attempt
+       - crontab, chmod = persistence attempt
+  ================================================================ -->
+  <rule id="100003" level="10">
+    <decoded_as>json</decoded_as>
+    <field name="eventid">cowrie.command.input</field>
+    <description>Honeypot: Attacker from $(src_ip) executed command: $(input)</description>
+    <mitre>
+      <id>T1059</id>
+    </mitre>
+    <group>command_execution,post_compromise</group>
+  </rule>
+
+  <!-- ================================================================
+       RULE 100004: Malware Download Attempt
+       Fires when an attacker attempts to download a file.
+       This is critical — attacker is trying to stage tools or malware.
+       
+       MITRE: T1105 — Ingress Tool Transfer
+       Tactic: Command and Control
+       Severity: Critical (level 13)
+       
+       Common patterns: wget/curl to download cryptominers,
+       backdoors, or botnet agents. The URL is logged by Cowrie
+       and can be cross-referenced with VirusTotal/AbuseIPDB.
+  ================================================================ -->
+  <rule id="100004" level="13">
+    <decoded_as>json</decoded_as>
+    <field name="eventid">cowrie.session.file_download</field>
+    <description>Honeypot: CRITICAL — Attacker from $(src_ip) attempted to download file from $(url) — possible malware staging</description>
+    <mitre>
+      <id>T1105</id>
+    </mitre>
+    <group>malware,file_download,critical</group>
+  </rule>
+
+</group>
