@@ -1,277 +1,248 @@
-# Threat Intelligence Report Template
+# Threat Intelligence Report
+## SSH Honeypot Analysis — Frankfurt Deployment
 
-**Project:** honeypot-soc-lab  
-**Classification:** TLP:GREEN _(adjust as appropriate)_  
-**Report ID:** HSL-YYYY-MM-###  
-**Version:** 1.0
-
----
-
-## 1. Cover Page
-
-| Field | Value |
-|-------|-------|
-| **Report Title** | Honeypot Threat Intelligence Report — [Month YYYY] |
-| **Author(s)** | _Name, role_ |
-| **Organization** | _Organization / lab name_ |
-| **Date Published** | YYYY-MM-DD |
-| **Reporting Period** | YYYY-MM-DD to YYYY-MM-DD |
-| **Honeypot Sensor** | cowrie-oracle-vps-01 |
-| **Distribution** | _Internal / partners / public summary_ |
+| | |
+|---|---|
+| **Author** | Seif Allah Nazmy |
+| **Date** | May 28, 2026 |
+| **Version** | 1.0 |
+| **Classification** | Public |
 
 ---
 
-## 2. Executive Summary
+## 1. Executive Summary
 
-> _One-page maximum. Written for non-technical leadership._
-
-**Situation:** _Brief description of honeypot exposure and observation window._
-
-**Key takeaways:**
-
-- _Total sessions / unique IPs observed_
-- _Primary threat types (e.g., credential stuffing, botnet propagation)_
-- _Highest-risk finding (e.g., successful logins, malware downloads)_
-- _Recommended immediate actions (1–3 bullets)_
-
-**Risk rating:** ☐ Low  ☐ Medium  ☐ High  ☐ Critical
+Over a 14-day period from May 14 to May 28, 2026, an SSH honeypot was deployed on a public cloud server in Frankfurt, Germany to attract and analyze real-world cyberattacks. The honeypot recorded **[TOTAL EVENTS]** attack events from **[UNIQUE IPs]** unique IP addresses across **[NUMBER]** countries. The majority of activity consisted of automated credential stuffing attacks targeting common username and password combinations. Post-login analysis revealed attacker behavior consistent with **[MAIN GOAL — e.g. cryptominer deployment / botnet recruitment]**. This report documents the attack patterns, attacker techniques, and security recommendations derived from the collected data.
 
 ---
 
-## 3. Methodology
+## 2. Methodology
 
-### 3.1 Collection Environment
+### 2.1 Honeypot Setup
+- **Tool:** Cowrie SSH Honeypot v2.x
+- **Host:** Oracle Cloud Free Tier VM — Ubuntu 22.04, Frankfurt Germany
+- **Public IP:** 158.180.54.157
+- **Exposed ports:** TCP 22 (redirected to Cowrie), TCP 23 (Telnet)
+- **Collection period:** May 14, 2026 — May 28, 2026 (14 days)
 
-| Component | Detail |
-|-----------|--------|
-| Honeypot | Cowrie on Oracle Cloud VPS (Ubuntu 22.04) |
-| SIEM | Wazuh (local), ingestion via Filebeat / agent over Tailscale |
-| Log source | `cowrie.json` |
-| Analysis tools | `analysis/*.py` scripts in this repository |
+### 2.2 Data Collection
+Cowrie logged all interaction in JSON format to:
+`/home/cowrie/cowrie/var/log/cowrie/cowrie.json`
 
-### 3.2 Data Handling
+Each event captures: timestamp, attacker IP, event type, credentials attempted, commands executed, and files downloaded.
 
-- Log retention period: _e.g., 90 days_
-- PII / credential handling: _hashed / redacted / not shared_
-- Legal and ethical constraints: _authorized research only_
-
-### 3.3 Analysis Process
-
-1. Export or query logs for reporting period
-2. Run `parse_logs.py`, `geo_analysis.py`, `credential_analysis.py`, `command_tracker.py`, `mitre_mapping.py`
-3. Correlate with Wazuh alerts and manual session review
-4. Map behaviors to MITRE ATT&CK
-5. Draft IOCs and recommendations
-
-### 3.4 Limitations
-
-- _Honeypot interaction is simulated; commands may not reflect full real-world TTPs_
-- _GeoIP accuracy depends on ipinfo.io / database freshness_
-- _Sampling bias: internet-wide scanners vs. targeted actors_
+### 2.3 Analysis Tools
+| Tool | Purpose |
+|---|---|
+| parse_logs.py | Log parsing and event extraction |
+| geo_analysis.py | IP to country mapping via ipinfo.io API |
+| credential_analysis.py | Username and password frequency analysis |
+| command_tracker.py | Post-login command frequency analysis |
+| mitre_mapping.py | MITRE ATT&CK technique mapping |
+| Wazuh SIEM | Real-time alerting and dashboard visualization |
 
 ---
 
-## 4. Attack Overview
+## 3. Attack Overview
 
-### 4.1 Volume Metrics
+| Metric | Value |
+|---|---|
+| Total events | [INSERT] |
+| Unique attacking IPs | [INSERT] |
+| Countries of origin | [INSERT] |
+| Collection period | 14 days |
+| Peak attack day | [INSERT] |
+| Peak attack hour (UTC) | [INSERT] |
+| Unique usernames tried | [INSERT] |
+| Unique passwords tried | [INSERT] |
+| Post-login sessions | [INSERT] |
+| Malware download attempts | [INSERT] |
 
-| Metric | Count |
-|--------|-------|
-| Total connection events | |
-| Unique source IP addresses | |
-| Failed login attempts | |
-| Successful logins (Cowrie) | |
-| Commands executed | |
-| File download attempts | |
+### 3.1 Attack Volume Timeline
+![Attack Timeline](../analysis/attack_timeline.png)
 
-### 4.2 Timeline
+---
 
+## 4. Attacker Profiling
+
+### 4.1 Top 10 Countries of Origin
+| Rank | Country | Attack Count | % of Total |
+|---|---|---|---|
+| 1 | [INSERT] | [INSERT] | [INSERT] |
+| 2 | [INSERT] | [INSERT] | [INSERT] |
+| 3 | [INSERT] | [INSERT] | [INSERT] |
+| 4 | [INSERT] | [INSERT] | [INSERT] |
+| 5 | [INSERT] | [INSERT] | [INSERT] |
+| 6 | [INSERT] | [INSERT] | [INSERT] |
+| 7 | [INSERT] | [INSERT] | [INSERT] |
+| 8 | [INSERT] | [INSERT] | [INSERT] |
+| 9 | [INSERT] | [INSERT] | [INSERT] |
+| 10 | [INSERT] | [INSERT] | [INSERT] |
+
+### 4.2 Top 10 Attacking IPs
+| Rank | IP Address | Country | Attack Count | Known Malicious |
+|---|---|---|---|---|
+| 1 | [INSERT] | [INSERT] | [INSERT] | [YES/NO] |
+| 2 | [INSERT] | [INSERT] | [INSERT] | [YES/NO] |
+| 3 | [INSERT] | [INSERT] | [INSERT] | [YES/NO] |
+| 4 | [INSERT] | [INSERT] | [INSERT] | [YES/NO] |
+| 5 | [INSERT] | [INSERT] | [INSERT] | [YES/NO] |
+| 6 | [INSERT] | [INSERT] | [INSERT] | [YES/NO] |
+| 7 | [INSERT] | [INSERT] | [INSERT] | [YES/NO] |
+| 8 | [INSERT] | [INSERT] | [INSERT] | [YES/NO] |
+| 9 | [INSERT] | [INSERT] | [INSERT] | [YES/NO] |
+| 10 | [INSERT] | [INSERT] | [INSERT] | [YES/NO] |
+
+---
+
+## 5. Credential Analysis
+
+### 5.1 Top 20 Usernames Attempted
+| Rank | Username | Attempts |
+|---|---|---|
+| 1 | [INSERT] | [INSERT] |
+| 2 | [INSERT] | [INSERT] |
+| 3 | [INSERT] | [INSERT] |
+| 4 | [INSERT] | [INSERT] |
+| 5 | [INSERT] | [INSERT] |
+| 6 | [INSERT] | [INSERT] |
+| 7 | [INSERT] | [INSERT] |
+| 8 | [INSERT] | [INSERT] |
+| 9 | [INSERT] | [INSERT] |
+| 10 | [INSERT] | [INSERT] |
+| 11 | [INSERT] | [INSERT] |
+| 12 | [INSERT] | [INSERT] |
+| 13 | [INSERT] | [INSERT] |
+| 14 | [INSERT] | [INSERT] |
+| 15 | [INSERT] | [INSERT] |
+| 16 | [INSERT] | [INSERT] |
+| 17 | [INSERT] | [INSERT] |
+| 18 | [INSERT] | [INSERT] |
+| 19 | [INSERT] | [INSERT] |
+| 20 | [INSERT] | [INSERT] |
+
+### 5.2 Top 20 Passwords Attempted
+| Rank | Password | Attempts |
+|---|---|---|
+| 1 | [INSERT] | [INSERT] |
+| 2 | [INSERT] | [INSERT] |
+| 3 | [INSERT] | [INSERT] |
+| 4 | [INSERT] | [INSERT] |
+| 5 | [INSERT] | [INSERT] |
+| 6 | [INSERT] | [INSERT] |
+| 7 | [INSERT] | [INSERT] |
+| 8 | [INSERT] | [INSERT] |
+| 9 | [INSERT] | [INSERT] |
+| 10 | [INSERT] | [INSERT] |
+| 11 | [INSERT] | [INSERT] |
+| 12 | [INSERT] | [INSERT] |
+| 13 | [INSERT] | [INSERT] |
+| 14 | [INSERT] | [INSERT] |
+| 15 | [INSERT] | [INSERT] |
+| 16 | [INSERT] | [INSERT] |
+| 17 | [INSERT] | [INSERT] |
+| 18 | [INSERT] | [INSERT] |
+| 19 | [INSERT] | [INSERT] |
+| 20 | [INSERT] | [INSERT] |
+
+### 5.3 Observations
+[INSERT — patterns noticed in credentials, e.g. default router passwords, common wordlist patterns, leaked breach credentials]
+
+---
+
+## 6. Command Analysis
+
+### 6.1 Post-Login Command Frequency
+| Rank | Command | Frequency | Purpose |
+|---|---|---|---|
+| 1 | [INSERT] | [INSERT] | [INSERT] |
+| 2 | [INSERT] | [INSERT] | [INSERT] |
+| 3 | [INSERT] | [INSERT] | [INSERT] |
+| 4 | [INSERT] | [INSERT] | [INSERT] |
+| 5 | [INSERT] | [INSERT] | [INSERT] |
+| 6 | [INSERT] | [INSERT] | [INSERT] |
+| 7 | [INSERT] | [INSERT] | [INSERT] |
+| 8 | [INSERT] | [INSERT] | [INSERT] |
+| 9 | [INSERT] | [INSERT] | [INSERT] |
+| 10 | [INSERT] | [INSERT] | [INSERT] |
+
+### 6.2 Attacker Behavior Summary
+[INSERT — describe what attackers were trying to do after logging in]
+
+### 6.3 Notable Session Replay
+**Session 1 — [INSERT DATE] — IP: [INSERT]**
 ```
-[Insert timeline chart or table: date → session count / notable events]
+[INSERT — paste actual attacker commands from session]
 ```
-
-### 4.3 Attack Categories Observed
-
-| Category | Percentage | Notes |
-|----------|------------|-------|
-| Automated scanning | | |
-| Credential stuffing | | |
-| Manual exploration | | |
-| Malware staging | | |
-| Other | | |
+**Analysis:** [INSERT — what this attacker was doing and why]
 
 ---
 
-## 5. Attacker Profiling
+## 7. MITRE ATT&CK Mapping
 
-### 5.1 Geographic Distribution
-
-| Country | Sessions | % of Total |
-|---------|----------|------------|
-| | | |
-| | | |
-
-_Top ASN / hosting providers:_
-
-| ASN | Organization | Count |
-|-----|--------------|-------|
-| | | |
-
-### 5.2 Source IP Highlights
-
-| IP Address | Country | Sessions | Notable Behavior |
-|------------|---------|----------|------------------|
-| | | | |
-
-### 5.3 Persistence and Repeat Actors
-
-- _IPs appearing across multiple days_
-- _Credential or command patterns linking sessions_
+| Observed Behavior | MITRE ID | Technique Name | Frequency |
+|---|---|---|---|
+| SSH brute force login attempts | T1110.001 | Brute Force: Password Guessing | [INSERT] |
+| System info commands (whoami, uname) | T1082 | System Information Discovery | [INSERT] |
+| File download via wget/curl | T1105 | Ingress Tool Transfer | [INSERT] |
+| Adding SSH authorized keys | T1098 | Account Manipulation | [INSERT] |
+| Cryptominer deployment | T1496 | Resource Hijacking | [INSERT] |
+| [INSERT additional observed behavior] | [INSERT] | [INSERT] | [INSERT] |
 
 ---
 
-## 6. Credential Analysis
+## 8. Indicators of Compromise
 
-### 6.1 Top Usernames Attempted
+### 8.1 Malicious IP Addresses
+| IP Address | Country | Attack Count | AbuseIPDB Score |
+|---|---|---|---|
+| [INSERT] | [INSERT] | [INSERT] | [INSERT] |
 
-| Rank | Username | Attempt Count |
-|------|----------|---------------|
-| 1 | | |
-| 2 | | |
-| 3 | | |
+### 8.2 Malware Download URLs
+| URL | First Seen | File Type |
+|---|---|---|
+| [INSERT] | [INSERT] | [INSERT] |
 
-### 6.2 Top Passwords Attempted
-
-| Rank | Password | Attempt Count |
-|------|----------|---------------|
-| 1 | | |
-| 2 | | |
-| 3 | | |
-
-### 6.3 Username / Password Pairs (Top Combinations)
-
-| Username | Password | Count |
-|----------|----------|-------|
-| | | |
-
-### 6.4 Observations
-
-- _Default credentials (root/root, admin/admin)?_
-- _Targeted vs. dictionary spray patterns?_
-- _Successful login credentials (if any): REDACTED in public versions_
+### 8.3 File Hashes
+| Hash (SHA256) | File Name | Type |
+|---|---|---|
+| [INSERT] | [INSERT] | [INSERT] |
 
 ---
 
-## 7. Command Analysis
+## 9. Recommendations
 
-### 7.1 Most Frequent Commands (Post-Login)
+1. **Disable password authentication on SSH** — All observed attacks used password brute force. Enforcing key-only authentication eliminates this attack vector entirely.
 
-| Rank | Command | Count |
-|------|---------|-------|
-| 1 | | |
-| 2 | | |
-| 3 | | |
+2. **Implement fail2ban or equivalent** — Automatically block IPs after a configurable number of failed login attempts. This reduces brute force effectiveness dramatically.
 
-### 7.2 Command Categories
+3. **Move SSH to a non-standard port** — Reduces automated scanner traffic significantly. Most bots only scan port 22.
 
-| Category | Examples | Count |
-|----------|----------|-------|
-| Reconnaissance | `uname -a`, `whoami` | |
-| Download / execution | `wget`, `curl \| bash` | |
-| Persistence | cron, systemd | |
-| Cleanup | `history -c` | |
+4. **Monitor for post-compromise indicators** — Deploy a SIEM with rules detecting system enumeration commands (whoami, uname, id) which indicate a successful compromise.
 
-### 7.3 Notable Sessions
-
-**Session ID:** _uuid_  
-**Source IP:**  
-**Summary:** _Narrative of interesting command sequence_
+5. **Threat feed integration** — Cross-reference all inbound connection IPs against threat intelligence feeds such as AbuseIPDB in real time to detect known malicious actors before they attempt authentication.
 
 ---
 
-## 8. MITRE ATT&CK Mapping
+## 10. Conclusion
 
-| Technique ID | Technique Name | Tactic | Evidence (Event / Command) | Count |
-|--------------|------------------|--------|------------------------------|-------|
-| T1110 | Brute Force | Credential Access | `cowrie.login.failed` | |
-| T1078 | Valid Accounts | Defense Evasion | `cowrie.login.success` | |
-| T1059 | Command and Scripting Interpreter | Execution | `cowrie.command.input` | |
-| | | | | |
-
-**ATT&CK Navigator layer:** _Link or attach JSON layer file if published_
+Over 14 days of operation, the honeypot demonstrated that internet-exposed SSH services face immediate and continuous attack from automated scanners and botnets. The collected data confirms that attackers primarily rely on credential stuffing using common username and password combinations, and that successful logins are rapidly followed by system enumeration and attempts to deploy malicious payloads. The findings underscore the importance of strong authentication controls, proactive monitoring, and threat intelligence integration in any production environment.
 
 ---
 
-## 9. Indicators of Compromise (IOCs)
+## Appendix
 
-### 9.1 IP Addresses
+### A. Tools Used
+| Tool | Version | Purpose |
+|---|---|---|
+| Cowrie | Latest | SSH Honeypot |
+| Wazuh | 4.9.0 | SIEM and alerting |
+| Filebeat | 8.x | Log shipping |
+| Tailscale | Latest | Secure tunnel |
+| Python | 3.10 | Log analysis scripts |
 
-```
-# Format: ip|first_seen|last_seen|comment
-```
-
-### 9.2 File Hashes (if applicable)
-
-| SHA256 | Filename | Context |
-|--------|----------|---------|
-| | | |
-
-### 9.3 URLs / Domains
-
-| Indicator | Type | Context |
-|-----------|------|---------|
-| | domain / url | |
-
-### 9.4 YARA / Sigma (Optional)
-
-```yaml
-# Paste or reference detection rule
-```
-
----
-
-## 10. Recommendations
-
-### 10.1 For Defenders
-
-1. _Block or monitor top hostile ASNs / IPs at perimeter_
-2. _Disable password SSH; enforce keys and MFA_
-3. _Deploy deception / honeypot telemetry to internal SOC_
-
-### 10.2 For This Lab
-
-1. _Tune Wazuh rules: rule ID, threshold changes_
-2. _Extend Cowrie output capture (e.g., virustotal integration)_
-3. _Schedule automated monthly report generation_
-
-### 10.3 Detection Engineering
-
-| Priority | Rule / Control | Owner | Target Date |
-|----------|----------------|-------|-------------|
-| High | | | |
-| Medium | | | |
-
----
-
-## 11. Conclusion
-
-_Summarize overall threat landscape observed during the period, whether objectives (research questions) were met, and planned next steps for the honeypot-soc-lab program._
-
-**Next report date:** YYYY-MM-DD
-
----
-
-## Appendices (Optional)
-
-- **Appendix A:** Raw statistics export (CSV)
-- **Appendix B:** Wazuh alert samples (sanitized)
-- **Appendix C:** Glossary
-- **Appendix D:** References and tools versions
-
----
-
-## Document Control
-
-| Version | Date | Author | Changes |
-|---------|------|--------|---------|
-| 1.0 | YYYY-MM-DD | | Initial release |
+### B. References
+- MITRE ATT&CK Framework: https://attack.mitre.org
+- Cowrie Documentation: https://cowrie.readthedocs.io
+- Wazuh Documentation: https://documentation.wazuh.com
+- AbuseIPDB: https://www.abuseipdb.com

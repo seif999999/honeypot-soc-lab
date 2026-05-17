@@ -42,9 +42,9 @@ COWRIE_TO_MITRE: dict[str, AttackTechnique] = {
         "Credential Access",
     ),
     "cowrie.login.success": AttackTechnique(
-        "T1078",
-        "Valid Accounts",
-        "Defense Evasion",
+        "T1110.001",
+        "Brute Force: Password Guessing",
+        "Credential Access",
     ),
     "cowrie.command.input": AttackTechnique(
         "T1059",

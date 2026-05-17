@@ -1,190 +1,294 @@
-# Operations Runbook — honeypot-soc-lab
+# Security Operations Runbook
+## Honeypot + SIEM Pipeline — Operational Guide
 
-Step-by-step procedures for deploying, connecting, and verifying the honeypot-to-SIEM pipeline.
-
----
-
-## Prerequisites
-
-> _Placeholder — complete before starting deployment._
-
-### Accounts and Access
-
-- [ ] Oracle Cloud account with Always Free compute available
-- [ ] Tailscale account; ability to install on VPS and local machine
-- [ ] (Optional) ipinfo.io API token for geo analysis scripts
-
-### Local Workstation
-
-- [ ] Ubuntu 22.04+ or WSL2 with sufficient RAM (8 GB+ recommended for Wazuh)
-- [ ] Docker and Docker Compose **or** native Wazuh installation
-- [ ] Python 3.10+ with `pip` for analysis scripts
-- [ ] Git, SSH client, text editor
-
-### Network
-
-- [ ] Home/router allows outbound connections (no inbound required for SIEM)
-- [ ] Tailscale installed and authenticated on both endpoints
-- [ ] Document Tailscale IPs: VPS `100.x.x.x` ___ | Local `100.x.x.x` ___
-
-### Security Baseline
-
-- [ ] Dedicated cloud project / compartment for honeypot only
-- [ ] SSH key-based access to VPS; password auth disabled for admin
-- [ ] Incident contact documented for abuse reports
+| | |
+|---|---|
+| **Author** | Seif Allah Nazmy |
+| **Version** | 1.0 |
+| **Last Updated** | May 2026 |
+| **Classification** | Internal |
 
 ---
 
-## Honeypot Setup
+## 1. System Overview
 
-> _Placeholder — see [honeypot/setup.md](../honeypot/setup.md) for full Cowrie documentation._
+This runbook covers the operation and maintenance of a two-component threat detection pipeline consisting of a Cowrie SSH honeypot deployed on Oracle Cloud Infrastructure and a Wazuh SIEM running locally via Docker. The honeypot captures real attack data from the public internet and ships it via Filebeat through a Tailscale encrypted tunnel to the Wazuh SIEM for real-time analysis, alerting, and threat intelligence generation.
 
-### Summary Checklist
-
-- [ ] Provision Oracle Cloud VPS (Ubuntu 22.04)
-- [ ] Apply system updates and configure UFW (allow 22, optional 23)
-- [ ] Create `cowrie` system user; clone and install Cowrie
-- [ ] Configure `cowrie.cfg` (hostname, sensor name, logging paths)
-- [ ] Set iptables redirect: public 22 → Cowrie listener port
-- [ ] Enable and start Cowrie via systemd
-- [ ] Verify `cowrie.json` receives events after test SSH attempt
-
-### Verification
-
-```bash
-# On VPS — confirm Cowrie is listening and logging
-sudo systemctl status cowrie
-tail -f /home/cowrie/cowrie/var/log/cowrie/cowrie.json
+**Pipeline:**
+```
+Internet Attackers → Cowrie (OCI Frankfurt) → Filebeat → Tailscale → Wazuh (Legion) → Dashboard
 ```
 
 ---
 
-## SIEM Setup
+## 2. System Reference
 
-> _Placeholder — see [siem/setup.md](../siem/setup.md) for full Wazuh documentation._
+### 2.1 Infrastructure Details
+| Component | Value |
+|---|---|
+| Honeypot public IP | 158.180.54.157 |
+| Honeypot Tailscale IP | 100.73.203.110 |
+| SIEM Tailscale IP | 100.104.212.88 |
+| Honeypot SSH port | 22222 |
+| Cowrie listening port | 2222 |
+| Filebeat → Wazuh port | 5044 |
+| Wazuh dashboard | https://localhost |
+| Wazuh dashboard port | 443 |
+| Wazuh API port | 56000 |
 
-### Summary Checklist
+### 2.2 Credentials
+| System | Username | Password |
+|---|---|---|
+| Wazuh dashboard | admin | SecretPassword |
+| Oracle VPS | ubuntu | key-based auth only |
 
-- [ ] Install Wazuh manager, indexer, and dashboard (Docker or packages)
-- [ ] Complete initial admin password and TLS setup
-- [ ] Import custom decoders/rules from `siem/rules/`
-- [ ] Create honeypot-specific dashboards and index patterns
-- [ ] Confirm Dashboard accessible at `https://localhost` (or Tailscale IP)
+### 2.3 Key File Locations
+| File | Location |
+|---|---|
+| SSH private key | C:\Users\smnam\OneDrive\Documents\ssh key\ssh-keys\ssh-keys.key |
+| Cowrie logs | /home/cowrie/cowrie/var/log/cowrie/cowrie.json |
+| Cowrie config | /home/cowrie/cowrie/etc/cowrie.cfg |
+| Filebeat config | /etc/filebeat/filebeat.yml |
+| Wazuh docker files | C:\Users\smnam\wazuh-docker\single-node\ |
 
-### Verification
+---
 
+## 3. Connecting to Systems
+
+### 3.1 Connect to Honeypot VPS
+```powershell
+ssh -i "C:\Users\smnam\OneDrive\Documents\ssh key\ssh-keys\ssh-keys.key" ubuntu@158.180.54.157 -p 22222
+```
+
+### 3.2 Switch to Cowrie User
 ```bash
-# On local machine — check Wazuh services
-sudo systemctl status wazuh-manager   # if native install
-# Or: docker compose ps               # if Docker stack
+sudo su - cowrie
+cd cowrie
+source cowrie-env/bin/activate
+```
+
+### 3.3 Access Wazuh Dashboard
+Open browser → `https://localhost` → accept certificate warning → login with `admin` / `SecretPassword`
+
+---
+
+## 4. Daily Health Checks
+
+Run these checks daily to confirm the pipeline is operating correctly.
+
+### 4.1 Check Cowrie is Running
+```bash
+cowrie status
+```
+Expected output: `cowrie is running (PID: XXXXX)`
+
+### 4.2 Check Events Being Collected
+```bash
+cat var/log/cowrie/cowrie.json | wc -l
+```
+Expected: number increasing daily. If static for 24+ hours → investigate.
+
+### 4.3 Check Latest Events
+```bash
+tail -5 var/log/cowrie/cowrie.json
+```
+Expected: recent timestamps. If last event is hours old → Cowrie may have stopped.
+
+### 4.4 Check Filebeat is Running (when active)
+```bash
+sudo systemctl status filebeat
+```
+Expected: `active (running)`
+
+### 4.5 Check Tailscale Tunnel
+```bash
+sudo tailscale status
+```
+Expected: both `cowrie-honeypot` and `legion` showing as connected.
+
+### 4.6 Check Wazuh Containers
+```powershell
+docker ps
+```
+Expected: three containers running — `wazuh.manager`, `wazuh.indexer`, `wazuh.dashboard`
+
+---
+
+## 5. Starting and Stopping Components
+
+### 5.1 Start Cowrie
+```bash
+# As cowrie user with venv active
+cowrie start
+```
+
+### 5.2 Stop Cowrie
+```bash
+cowrie stop
+```
+
+### 5.3 Restart Cowrie
+```bash
+cowrie restart
+```
+
+### 5.4 Start Wazuh
+```powershell
+cd C:\Users\smnam\wazuh-docker\single-node
+docker compose up -d
+```
+Wait 2-3 minutes for all services to initialize before accessing dashboard.
+
+### 5.5 Stop Wazuh
+```powershell
+cd C:\Users\smnam\wazuh-docker\single-node
+docker compose down
+```
+
+### 5.6 Start Filebeat (Analysis Day Only)
+```bash
+sudo systemctl start filebeat
+```
+⚠️ Only run this when ready to begin ingestion. All historical logs will be shipped immediately.
+
+### 5.7 Stop Filebeat
+```bash
+sudo systemctl stop filebeat
 ```
 
 ---
 
-## Connecting the Pipeline
+## 6. Activating the Full Pipeline
 
-> _Placeholder — Filebeat + Tailscale + Wazuh agent integration._
+This procedure starts log ingestion from the honeypot into Wazuh. Run on analysis day only.
 
-### Tailscale
-
-- [ ] Install Tailscale on VPS and local host; join same tailnet
-- [ ] Record Tailscale IPs in runbook or secure notes
-- [ ] (Optional) Configure Tailscale ACLs to allow VPS → manager ports only
-
-### Log Shipping Options
-
-**Option A — Wazuh Agent on VPS (recommended)**
-
-- [ ] Install Wazuh agent on VPS
-- [ ] Enroll agent to manager using manager Tailscale IP
-- [ ] Configure `localfile` or integration to read `cowrie.json`
-
-**Option B — Filebeat to Manager**
-
-- [ ] Install Filebeat on VPS
-- [ ] Configure output to Wazuh/logstash endpoint on manager Tailscale IP
-- [ ] Enable JSON parsing for Cowrie log path
-
-### Checklist
-
-- [ ] Agent/Filebeat service enabled on boot
-- [ ] Firewall on VPS allows outbound to manager Tailscale IP:1514
-- [ ] Test event appears in Wazuh Dashboard within 5 minutes of honeypot activity
-
----
-
-## Verification Steps
-
-> _Placeholder — end-to-end validation after full deployment._
-
-### 1. Honeypot Liveness
-
-| Step | Expected Result |
-|------|-----------------|
-| SSH to VPS public IP (intentional test) | Connection to Cowrie banner |
-| New line in `cowrie.json` | `cowrie.session.connect` event |
-
-### 2. Log Shipping
-
-| Step | Expected Result |
-|------|-----------------|
-| Trigger failed login on honeypot | `cowrie.login.failed` in raw log |
-| Check agent/Filebeat status | Running, no errors in journal |
-| Search Wazuh Dashboard | Event indexed with source IP and username |
-
-### 3. Detection Rules
-
-| Step | Expected Result |
-|------|-----------------|
-| Multiple failed logins from same IP | Brute-force rule alert (if configured) |
-| Successful Cowrie login (if simulated) | High-severity alert |
-
-### 4. Analysis Scripts
-
-```bash
-cd analysis/
-python parse_logs.py --input ../honeypot/sample-logs/cowrie.json
-python credential_analysis.py --input ../honeypot/sample-logs/cowrie.json
+**Step 1:** Start Wazuh on Legion
+```powershell
+cd C:\Users\smnam\wazuh-docker\single-node
+docker compose up -d
 ```
 
-| Step | Expected Result |
-|------|-----------------|
-| Scripts run without error | Summary output printed |
-| Counts match Dashboard | Rough parity on session/login counts |
+**Step 2:** Confirm Wazuh is ready
+```powershell
+docker ps
+```
+Wait until all 3 containers show `Up` status.
 
-### 5. Operational Health (Weekly)
+**Step 3:** SSH into VPS
+```powershell
+ssh -i "C:\Users\smnam\OneDrive\Documents\ssh key\ssh-keys\ssh-keys.key" ubuntu@158.180.54.157 -p 22222
+```
 
-- [ ] Disk usage on VPS log partition < 80%
-- [ ] Cowrie and agent services active
-- [ ] Wazuh indexer cluster green
-- [ ] Review top alerts and update threat report draft
+**Step 4:** Verify Tailscale tunnel
+```bash
+ping 100.104.212.88 -c 4
+```
+Expected: 0% packet loss
 
----
+**Step 5:** Start Filebeat
+```bash
+sudo systemctl start filebeat
+```
 
-## Troubleshooting Quick Reference
-
-| Symptom | Check |
-|---------|-------|
-| No logs on VPS | Cowrie service, file permissions, disk full |
-| Logs on VPS but not in Wazuh | Agent enrollment, Tailscale connectivity, wrong manager IP |
-| JSON not parsed | Decoder configuration, `log_format` in agent localfile |
-| Dashboard empty | Index pattern, time range, indexer disk |
-
----
-
-## Rollback
-
-1. Stop Cowrie: `sudo systemctl stop cowrie`
-2. Remove iptables redirect to restore normal SSH (if needed)
-3. Disable Wazuh agent/Filebeat on VPS
-4. Archive logs before decommission: `tar czf cowrie-logs-$(date +%F).tar.gz ...`
+**Step 6:** Confirm logs flowing in Wazuh
+Open `https://localhost` → Security Events → confirm new events appearing
 
 ---
 
-## Contacts and Escalation
+## 7. Incident Response Procedures
 
-| Role | Contact |
-|------|---------|
-| Lab owner | _name / email_ |
-| Cloud provider abuse | Oracle Cloud support console |
-| Tailscale admin | _tailnet admin_ |
+### 7.1 Cowrie Has Stopped
+**Symptoms:** `cowrie status` returns not running. Log count not increasing.
+
+**Response:**
+1. Check for errors: `cat /home/cowrie/cowrie/var/log/cowrie/cowrie.log`
+2. Restart Cowrie: `cowrie restart`
+3. Verify restart: `cowrie status`
+4. If still failing: check disk space `df -h`, check RAM `free -m`
+
+**Severity:** Medium — data collection interrupted but no security risk.
+
+---
+
+### 7.2 Wazuh Dashboard Not Accessible
+**Symptoms:** `https://localhost` not loading.
+
+**Response:**
+1. Check containers: `docker ps`
+2. If containers stopped: `docker compose up -d`
+3. Wait 3 minutes then retry
+4. If containers running but dashboard unreachable: `docker compose restart`
+
+**Severity:** Low — SIEM offline but honeypot still collecting.
+
+---
+
+### 7.3 Tailscale Tunnel Down
+**Symptoms:** Ping to `100.104.212.88` fails. Filebeat not shipping logs.
+
+**Response:**
+1. On VPS: `sudo tailscale up`
+2. Re-authenticate if prompted
+3. Verify: `sudo tailscale status`
+4. Test tunnel: `ping 100.104.212.88 -c 4`
+
+**Severity:** Medium — log shipping interrupted when Filebeat is active.
+
+---
+
+### 7.4 Filebeat Not Shipping Logs
+**Symptoms:** Wazuh dashboard shows no new events despite Filebeat running.
+
+**Response:**
+1. Check Filebeat status: `sudo systemctl status filebeat`
+2. Check Filebeat logs: `sudo journalctl -u filebeat -n 50`
+3. Verify Tailscale tunnel is up
+4. Restart Filebeat: `sudo systemctl restart filebeat`
+
+**Severity:** Medium — analysis data not flowing to SIEM.
+
+---
+
+## 8. Log Backup Procedure
+
+Before analysis day, back up the raw Cowrie logs:
+
+```bash
+# On VPS — create a compressed backup
+cp /home/cowrie/cowrie/var/log/cowrie/cowrie.json ~/cowrie-backup-$(date +%Y%m%d).json
+gzip ~/cowrie-backup-$(date +%Y%m%d).json
+```
+
+To copy backup to Legion:
+```powershell
+scp -i "C:\Users\smnam\OneDrive\Documents\ssh key\ssh-keys\ssh-keys.key" -P 22222 ubuntu@158.180.54.157:~/cowrie-backup-*.json.gz C:\Users\smnam\Desktop\
+```
+
+---
+
+## 9. Maintenance
+
+### 9.1 Update Cowrie
+```bash
+sudo su - cowrie
+cd cowrie
+source cowrie-env/bin/activate
+git pull
+pip install -r requirements.txt
+cowrie restart
+```
+
+### 9.2 Update Wazuh
+```powershell
+cd C:\Users\smnam\wazuh-docker\single-node
+docker compose down
+git pull
+docker compose up -d
+```
+
+### 9.3 Rotate Logs
+Cowrie rotates logs automatically. Manual rotation if needed:
+```bash
+mv var/log/cowrie/cowrie.json var/log/cowrie/cowrie-$(date +%Y%m%d).json
+cowrie restart
+```

@@ -311,8 +311,8 @@ mkdir -p ~/cowrie/var/lib/cowrie/downloads
 ```bash
 source ~/cowrie/cowrie-env/bin/activate
 cd ~/cowrie
-bin/cowrie start
-bin/cowrie status
+cowrie start
+cowrie status
 ```
 
 Check listening port:
@@ -324,7 +324,7 @@ ss -tlnp | grep 2222
 Stop for now if you are still configuring iptables:
 
 ```bash
-bin/cowrie stop
+cowrie stop
 ```
 
 Exit back to `ubuntu` when finished:
@@ -415,7 +415,7 @@ crontab -e
 Add:
 
 ```cron
-@reboot sleep 30 && /home/cowrie/cowrie/bin/cowrie start >> /home/cowrie/cowrie/var/log/cowrie/cowrie-startup.log 2>&1
+@reboot sleep 30 && cd /home/cowrie/cowrie && source cowrie-env/bin/activate && cowrie start >> /home/cowrie/cowrie/var/log/cowrie/cowrie-startup.log 2>&1
 ```
 
 The `sleep 30` delay allows networking and iptables persistence to settle before Cowrie binds to port 2222.
@@ -429,7 +429,7 @@ sudo reboot
 After the instance returns, connect on port **22222** and check:
 
 ```bash
-sudo su - cowrie -c '/home/cowrie/cowrie/bin/cowrie status'
+sudo su - cowrie -c 'cd /home/cowrie/cowrie && source cowrie-env/bin/activate && cowrie status'
 ss -tlnp | grep 2222
 tail -f /home/cowrie/cowrie/var/log/cowrie/cowrie.json
 ```
@@ -570,7 +570,7 @@ Complete this checklist before treating the sensor as production-ready.
 
 | # | Check | Command / expected result |
 |---|-------|----------------------------|
-| 1 | Cowrie running | `sudo su - cowrie -c '~/cowrie/bin/cowrie status'` → running |
+| 1 | Cowrie running | `sudo su - cowrie -c 'cd ~/cowrie && source cowrie-env/bin/activate && cowrie status'` → running |
 | 2 | Cowrie listening | `ss -tlnp \| grep 2222` → cowrie/python |
 | 3 | Port 22 reaches Cowrie | `ssh -p 22 VPS_IP` from external host → Cowrie banner |
 | 4 | Admin SSH on 22222 | `ssh -p 22222 -i key ubuntu@VPS_IP` → Ubuntu shell |
@@ -676,7 +676,7 @@ python command_tracker.py -i ../honeypot/sample-logs/cowrie.json
 | Symptom | Likely cause | Fix |
 |---------|--------------|-----|
 | Cannot SSH on 22 to admin | iptables redirect active | Use port **22222** |
-| Port 22 connection refused | Cowrie not running | `bin/cowrie start` as `cowrie` user |
+| Port 22 connection refused | Cowrie not running | `cowrie start` as `cowrie` user (venv activated) |
 | Empty `cowrie.json` | Wrong path or permissions | Check `cowrie.cfg` `[output_jsonlog]` |
 | No commands logged | `interact_enabled` false | Set `interact_enabled = true`, restart Cowrie |
 | Filebeat errors | Wazuh/5044 down or ACL | `nc -zv 100.104.212.88 5044`, start receiver |

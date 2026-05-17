@@ -1,5 +1,7 @@
 # Architecture — honeypot-soc-lab
 
+![Architecture Diagram](architecture.png)
+
 This document describes the end-to-end telemetry pipeline from internet attackers through honeypot capture, secure log forwarding, SIEM ingestion, and analyst-facing outputs.
 
 ---
@@ -145,18 +147,12 @@ Results feed the formal [threat-report-template.md](threat-report-template.md).
 ## Network Ports Reference
 
 | Port | Service | Exposure |
-|------|---------|----------|
-| 22 | Cowrie (via iptables redirect) | Public (internet) |
-| 1514 | Wazuh agent connection | Tailscale only |
-| 1515 | Wazuh agent enrollment | Tailscale only |
-| 443 | Wazuh Dashboard | Localhost or Tailscale |
-| 55000 | Wazuh API | Localhost or Tailscale |
+|---|---|---|
+| 22 | Cowrie SSH (via iptables redirect from port 22) | Public internet |
+| 2222 | Cowrie internal listening port | VPS internal |
+| 22222 | Real SSH admin access | Public internet (key-based only) |
+| 5044 | Filebeat → Wazuh log ingestion | Tailscale only |
+| 443 | Wazuh Dashboard | Localhost only |
+| 56000 | Wazuh API | Localhost only |
 
----
 
-## Future Enhancements
-
-- [ ] Integrate MISP or OpenCTI for IOC sharing
-- [ ] Add Suricata IDS on VPS for pre-Cowrie network context
-- [ ] Automate weekly threat reports via CI
-- [ ] Ship logs to cold storage (S3-compatible) for long-term research
