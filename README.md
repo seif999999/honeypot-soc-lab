@@ -1,13 +1,12 @@
 # 🛡️ Honeypot + SOC Lab
 
-[![Python](https://img.shields.io/badge/Python-3.10+-3776AB?style=flat&logo=python&logoColor=white)](https://www.python.org/)
-[![Docker](https://img.shields.io/badge/Docker-Compose-2496ED?style=flat&logo=docker&logoColor=white)](https://www.docker.com/)
-[![Ubuntu](https://img.shields.io/badge/Ubuntu-22.04%20LTS-E95420?style=flat&logo=ubuntu&logoColor=white)](https://ubuntu.com/)
-[![Wazuh](https://img.shields.io/badge/Wazuh-4.9.0-blue?style=flat)](https://wazuh.com/)
-[![Oracle Cloud](https://img.shields.io/badge/Oracle%20Cloud-Always%20Free-red?style=flat)](https://www.oracle.com/cloud/free/)
-[![License](https://img.shields.io/badge/License-Educational-green?style=flat)]()
+## Overview
 
-An end-to-end threat detection pipeline built for real-world security research. A Cowrie SSH honeypot deployed on Oracle Cloud captures live attacker activity, ships logs via Filebeat through an encrypted Tailscale tunnel to a self-hosted Wazuh SIEM, and produces professional threat intelligence reports backed by real attack data.
+A fully operational threat detection pipeline built to capture, analyze, and visualize real-world SSH attack data. A Cowrie SSH honeypot was deployed on an Oracle Cloud VPS in Frankfurt, Germany and left exposed to the public internet for 21 days. All 939,329 captured attack events were ingested into a self-hosted Wazuh SIEM via a custom Python indexing pipeline, analyzed with 18 purpose-built Python scripts, and documented in a formal threat intelligence report.
+
+The honeypot attracted attacks from 2,685 unique IP addresses across 101 countries within seconds of deployment. Analysis identified six simultaneous, independent attack campaigns — including the mdrfckr botnet (1,342 compromised nodes, shared SSH backdoor key), a Mirai variant (confirmed C2 at 45.81.234.64), a bendi.py cryptomining dropper, and a komari-monitor deployment campaign.
+
+**[Read the full Threat Intelligence Report →](docs/threat-report.pdf)**
 
 ---
 
@@ -38,81 +37,167 @@ Internet Attackers
 
 ---
 
-## 📋 Project Overview
+## Wazuh SIEM Dashboard
 
-This project simulates a real Security Operations Center pipeline using entirely free, open-source tools. The honeypot is exposed to the public internet and receives real attack traffic within minutes of deployment. All attacker activity — login attempts, credentials used, commands executed, and files downloaded — is captured in structured JSON and analyzed through a combination of a production-grade SIEM and custom Python scripts.
+All 939,329 Cowrie events were indexed into OpenSearch and visualized in Wazuh:
 
-**What this demonstrates:**
-- Cloud infrastructure deployment and hardening
-- Honeypot design and operational security
-- Log ingestion and pipeline engineering
-- SIEM detection rule development mapped to MITRE ATT&CK
-- Threat intelligence analysis and professional reporting
+**All Events — 939,329 total**
+![Wazuh All Events](docs/wazuh-all-events.png)
 
----
+**Brute Force Attempts — 48,485 failed login events**
+![Wazuh Brute Force](docs/wazuh-brute-force.png)
 
-## 🛠️ Technologies
+**Post-Login Commands — 84,082 command input events**
+![Wazuh Commands](docs/wazuh-commands.png)
 
-| Layer | Technology | Purpose |
-|---|---|---|
-| Honeypot | Cowrie | SSH/Telnet honeypot, structured JSON logging |
-| Cloud | Oracle Cloud Always Free | Internet-facing VPS deployment |
-| Log Shipping | Filebeat | Forward Cowrie JSON logs to Wazuh |
-| Networking | Tailscale | Encrypted private tunnel between VPS and SIEM |
-| SIEM | Wazuh 4.9.0 | Log ingestion, detection rules, alerting, dashboards |
-| Analysis | Python 3.10+ | Log parsing, geo-IP mapping, credential analysis, MITRE mapping |
-| Containerization | Docker Compose | Local Wazuh stack deployment |
+**File Downloads — 10,756 download events**
+![Wazuh Downloads](docs/wazuh-downloads.png)
 
 ---
 
-## 📁 Repository Structure
+## Attack Visualizations
 
-```
-honeypot-soc-lab/
-├── README.md
-├── docs/
-│   ├── architecture.md          ← Full pipeline documentation
-│   ├── architecture.png         ← Architecture diagram
-│   ├── runbook.md               ← Operational runbook
-│   ├── threat-report-template.md
-│   └── threat-report.pdf        ← Final threat intelligence report (added May 28)
-├── honeypot/
-│   ├── setup.md                 ← Complete Cowrie setup guide
-│   └── sample-logs/             ← Anonymized real attack logs
-├── siem/
-│   ├── setup.md                 ← Complete Wazuh setup guide
-│   └── rules/                   ← Custom Wazuh detection rules
-└── analysis/
-    ├── parse_logs.py
-    ├── geo_analysis.py
-    ├── credential_analysis.py
-    ├── command_tracker.py
-    └── mitre_mapping.py
-```
+**Daily Attack Volume — May 2026**
+![Daily Timeline](docs/attack-timeline-daily.png)
+
+**Hourly Attack Volume by Hour of Day (UTC)**
+![Hourly Timeline](docs/attack-timeline-hourly.png)
+
+**Global Attacker Origins — 2,685 IPs across 101 Countries**
+![GeoIP Map](docs/attacker-map.png)
 
 ---
 
 ## 📊 Key Findings
 
-> Results from 14-day honeypot deployment — May 14 to May 28, 2026.
 > Full analysis in [docs/threat-report.pdf](docs/threat-report.pdf)
 
 | Metric | Value |
 |---|---|
-| Total events captured | TBD |
-| Unique attacking IPs | TBD |
-| Countries of origin | TBD |
-| Most common username | TBD |
-| Most common password | TBD |
-| Post-login sessions recorded | TBD |
-| Malware download attempts | TBD |
-| MITRE ATT&CK techniques observed | TBD |
+| Total Events Captured | 939,329 |
+| Unique Attacking IPs | 2,685 |
+| Countries of Origin | 101 |
+| Collection Period | May 13 – June 3, 2026 (21 days) |
+| Peak Attack Day | May 25, 2026 — 429,301 events |
+| Unique Usernames Tried | 2,125 |
+| Unique Passwords Tried | 28,529 |
+| RockYou Password Match Rate | 78.9% |
+| Post-Login Sessions | 60,826 |
+| Malware Samples Captured | 42 complete binaries |
+| MITRE ATT&CK Techniques | 12 |
+| Attack Campaigns Identified | 6 |
 
 ---
 
-## 📸 Dashboard Screenshots
+## Key Threat Intelligence Findings
 
-> To be added after pipeline activation on May 28, 2026.
+### Six Simultaneous Attack Campaigns (Zero Infrastructure Overlap)
+
+**Campaign 1 — mdrfckr Botnet**
+- 1,342 compromised servers injecting an identical SSH backdoor RSA key
+- Go-based custom toolchain (SSH-2.0-Go client fingerprint)
+- 6,273 confirmed backdoor installations across the collection period
+- No prior public threat intelligence reporting identified — original research
+
+**Campaign 2 — Mirai Botnet Variant**
+- C2 server at `45.81.234.64` (15/91 VirusTotal detections)
+- Downloads architecture-specific binaries: armv6l, mips, mipsel, sh4, x86
+- Operating under Minecraft hosting cover infrastructure (`panel.minesucht.eu`)
+- Hardcoded credential `345gs5662d34` — Mirai family fingerprint
+
+**Campaign 3 — Generic Credential Stuffing**
+- 24,807 connection attempts via libssh_0.9.6-based tools
+- 78.9% of passwords match the RockYou breach wordlist
+
+**Campaign 4 — bendi.py Cryptomining**
+- 290 automated deployments of a Python cryptominer dropper
+- Full chain: apt-get → wget → execute → self-delete
+
+**Campaign 5 — komari-monitor**
+- 290 unauthorized deployments of legitimate server monitoring agent
+- curl-pipe-to-bash installer bypasses file-based detection
+
+**Campaign 6 — May 25 Carpet-Bombing**
+- Two IPs generated 429,301 events in a single day (10x daily average)
+- Nine consecutive hours of sustained high-volume brute force
+
+### Credential Intelligence
+- 93,976 login attempts across 21 days
+- 78.9% of unique passwords found in RockYou breach corpus
+- `345gs5662d34` — hardcoded Mirai credential, not in RockYou, 6,146 attempts
+- `mdrfckr` username — zero false positive campaign indicator
+
+### Infrastructure Analysis
+- 99/100 top attacking IPs already flagged in AbuseIPDB
+- Zero infrastructure overlap between any of the six campaigns
+- C2 server `45.81.234.64` running under gaming hosting cover with EOL software
+
+---
+
+## Repository Structure
+
+```
+honeypot-soc-lab/
+├── README.md
+├── docs/
+│   ├── threat-report.pdf          ← Full threat intelligence report
+│   ├── architecture.md
+│   ├── runbook.md
+│   ├── attacker-map.png           ← GeoIP world map
+│   ├── attack-timeline-daily.png
+│   ├── attack-timeline-hourly.png
+│   ├── wazuh-all-events.png
+│   ├── wazuh-brute-force.png
+│   ├── wazuh-commands.png
+│   ├── wazuh-downloads.png
+│   ├── virustotal-45.81.234.64.png
+│   ├── ioc-ips.csv                ← 2,685 IPs with AbuseIPDB scores
+│   └── ioc-urls.csv               ← Malware download URLs
+├── honeypot/
+│   ├── setup.md
+│   └── sample-logs/               ← Anonymized real attack logs
+├── siem/
+│   ├── setup.md
+│   └── rules/                     ← Custom Wazuh detection rules (200001-200011)
+└── analysis/                      ← 18 Python analysis scripts
+    ├── parse_logs.py
+    ├── credential_analysis.py
+    ├── command_tracker.py
+    ├── mitre_mapping.py
+    ├── geo_analysis.py
+    ├── credential_intelligence.py
+    ├── session_replay.py
+    ├── find_downloads.py
+    ├── find_client_versions.py
+    ├── find_download_sessions.py
+    ├── extract_ssh_keys.py
+    ├── investigate_spike.py
+    ├── timeline_graph.py
+    ├── map_generator.py
+    ├── ioc_export.py
+    └── push_to_opensearch.py
+```
+
+---
+
+## Technologies Used
+
+![Python](https://img.shields.io/badge/Python-3.10-blue)
+![Cowrie](https://img.shields.io/badge/Cowrie-2.9.19-green)
+![Wazuh](https://img.shields.io/badge/Wazuh-4.9.0-red)
+![Oracle Cloud](https://img.shields.io/badge/Oracle%20Cloud-Free%20Tier-orange)
+![Tailscale](https://img.shields.io/badge/Tailscale-VPN-blue)
+![License](https://img.shields.io/badge/License-MIT-yellow)
+
+| Component | Technology |
+|---|---|
+| Honeypot | Cowrie SSH Honeypot v2.9.19 |
+| SIEM | Wazuh 4.9.0 via Docker |
+| Cloud VPS | Oracle Cloud Free Tier (Frankfurt) |
+| Log Shipping | Custom Python OpenSearch indexer |
+| Tunnel | Tailscale |
+| Analysis | Python 3.10 (18 custom scripts) |
+| Threat Intel | AbuseIPDB, VirusTotal, ipinfo.io, Shodan |
 
 ---
 
