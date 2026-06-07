@@ -62,20 +62,20 @@ def lookup_ip(ip: str, token: str | None = None) -> dict[str, Any]:
 
     Returns:
         Parsed JSON response from ipinfo.io.
-
-    Raises:
-        urllib.error.HTTPError: On API errors (rate limit, invalid IP, etc.).
     """
+    import requests
     url = IPINFO_API_URL.format(ip=ip)
-    if token:
-        url = f"{url}?token={token}"
-
-    request = urllib.request.Request(
-        url,
-        headers={"Accept": "application/json", "User-Agent": "honeypot-soc-lab/1.0"},
-    )
-    with urllib.request.urlopen(request, timeout=10) as response:
-        return json.loads(response.read().decode("utf-8"))
+    params = {"token": token} if token else {}
+    try:
+        response = requests.get(
+            url,
+            params=params,
+            timeout=10,
+            headers={"Accept": "application/json", "User-Agent": "honeypot-soc-lab/1.0"},
+        )
+        return response.json()
+    except Exception as exc:
+        return {"error": str(exc)}
 
 
 def map_ips_to_countries(

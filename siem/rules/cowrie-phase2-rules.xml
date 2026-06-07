@@ -1,0 +1,187 @@
+<!--
+  Cowrie Honeypot — Phase 2 Detection Rules
+  honeypot-soc-lab | Author: Seif Allah Nazmy
+
+  Phase 2 rules: campaign-specific attacker behaviors derived from 13 days
+  of live honeypot data (2026-05-13 to 2026-05-26, 698,309 events, 2,685
+  unique attacker IPs). Each rule targets a concrete IOC or TTP fingerprint
+  observed repeatedly in the collected log file.
+
+  Rule ID range: 200005-200011
+  Selected to continue Phase 1 range (200001-200004) without conflict.
+
+  MITRE ATT&CK references included per rule.
+-->
+
+<group name="cowrie,honeypot,ssh">
+
+  <!-- RULE 200005: SSH Backdoor Key Injection — mdrfckr Botnet
+       MITRE: T1098 - Account Manipulation
+       Tactic: Persistence | Severity: Critical (level 14)
+
+       Real-world observation:
+       extract_ssh_keys.py found a single RSA public key (comment "mdrfckr")
+       injected into ~/.ssh/authorized_keys on 6,273 separate occasions across
+       1,342 unique source IPs. The command pattern is always:
+           echo "ssh-rsa AAAA...== mdrfckr" >> .ssh/authorized_keys
+       This establishes a persistent backdoor that survives password changes,
+       allowing the operator to re-enter any compromised host at will.
+       The scale (>93% of all authorized_keys events use the same key)
+       confirms this is a coordinated botnet campaign rather than opportunistic
+       access. -->
+  <rule id="200005" level="14">
+    <decoded_as>json</decoded_as>
+    <field name="eventid">cowrie.command.input</field>
+    <field name="input" type="pcre2">authorized_keys</field>
+    <description>Honeypot: SSH backdoor key injection via authorized_keys — mdrfckr botnet campaign detected.</description>
+    <mitre>
+      <id>T1098</id>
+    </mitre>
+    <group>persistence,ssh_key_injection,botnet</group>
+  </rule>
+
+  <!-- RULE 200006: Root Password Change via chpasswd
+       MITRE: T1136 - Create Account
+       Tactic: Persistence | Severity: High (level 13)
+
+       Real-world observation:
+       credential_analysis.py identified chpasswd commands among post-login
+       activity on sessions that had already injected the mdrfckr key. The
+       sequence — inject SSH key, then change root password — is a two-step
+       account takeover: the key provides silent re-entry, the password change
+       locks out the legitimate owner and any competing attacker who may have
+       used the default credentials to gain initial access. -->
+  <rule id="200006" level="13">
+    <decoded_as>json</decoded_as>
+    <field name="eventid">cowrie.command.input</field>
+    <field name="input" type="pcre2">chpasswd</field>
+    <description>Honeypot: Root password change via chpasswd — account takeover attempt detected.</description>
+    <mitre>
+      <id>T1136</id>
+    </mitre>
+    <group>account_takeover,persistence</group>
+  </rule>
+
+  <!-- RULE 200007: Cryptominer Dropper bendi.py
+       MITRE: T1496 - Resource Hijacking
+       Tactic: Impact | Severity: Critical (level 15)
+
+       Real-world observation:
+       command_tracker.py surfaced "bendi.py" as a recurring filename in
+       post-login command sequences. The script is fetched from an attacker-
+       controlled host and executed directly. The naming pattern ("bendi") and
+       execution method (curl | python or wget then python bendi.py) match
+       documented cryptomining dropper campaigns that deploy XMRig or
+       compatible Monero miners on compromised Linux servers. Level 15 is
+       assigned because execution of bendi.py indicates the host has already
+       been compromised and active resource exfiltration is underway. -->
+  <rule id="200007" level="15">
+    <decoded_as>json</decoded_as>
+    <field name="eventid">cowrie.command.input</field>
+    <field name="input" type="pcre2">bendi\.py</field>
+    <description>Honeypot: CRITICAL — Cryptominer dropper bendi.py detected — active cryptomining campaign.</description>
+    <mitre>
+      <id>T1496</id>
+    </mitre>
+    <group>cryptominer,malware,critical</group>
+  </rule>
+
+  <!-- RULE 200008: Competing Malware Killed via pkill
+       MITRE: T1562 - Impair Defenses
+       Tactic: Defense Evasion | Severity: Medium-High (level 10)
+
+       Real-world observation:
+       session_replay.py and command_tracker.py both show pkill appearing in
+       automated post-login scripts. Common targets include miner process names,
+       other botnet agents, and watchdog daemons. This is characteristic of
+       "botnet competition" — each new campaign kills existing malware before
+       installing its own payload to claim exclusive use of the host's CPU.
+       The presence of pkill in a post-compromise session is therefore a
+       reliable signal that an automated infection workflow is executing,
+       even when the payload binary name is unknown or obfuscated. -->
+  <rule id="200008" level="10">
+    <decoded_as>json</decoded_as>
+    <field name="eventid">cowrie.command.input</field>
+    <field name="input" type="pcre2">pkill</field>
+    <description>Honeypot: Competing malware killed via pkill — active botnet competition detected.</description>
+    <mitre>
+      <id>T1562</id>
+    </mitre>
+    <group>defense_evasion,botnet</group>
+  </rule>
+
+  <!-- RULE 200009: Known Mirai Credential — 345gs5662d34
+       MITRE: T1078 - Valid Accounts
+       Tactic: Initial Access | Severity: High (level 12)
+
+       Real-world observation:
+       credential_analysis.py ranked "345gs5662d34" as the single most common
+       password observed in the dataset with 6,146 attempts, followed by
+       "3245gs5662d34" with 6,122 attempts. These credential strings are not
+       dictionary words; they are default credentials embedded in a specific
+       Mirai botnet variant and have appeared in public Mirai source code leaks.
+       A successful login using this credential therefore indicates the attacker
+       is running Mirai or a derivative — enabling higher-confidence attribution
+       and automatic escalation compared to a generic brute-force success alert. -->
+  <rule id="200009" level="12">
+    <decoded_as>json</decoded_as>
+    <field name="eventid">cowrie.login.success</field>
+    <field name="username" type="pcre2">345gs5662d34</field>
+    <description>Honeypot: Known Mirai botnet credential 345gs5662d34 detected — botnet fingerprint confirmed.</description>
+    <mitre>
+      <id>T1078</id>
+    </mitre>
+    <group>botnet,known_malware,mirai</group>
+  </rule>
+
+  <!-- ================================================================
+       RULE 200010: File Download from Honeypot
+       Fires on ANY file download attempt via Cowrie.
+       Derived from real observation: attacker at 176.65.139.213
+       downloaded Mirai binaries from confirmed C2 server 45.81.234.64
+       (armv6l, mips, mipsel, sh4, x86, 10Gbins.sh)
+
+       MITRE: T1105 — Ingress Tool Transfer
+       Tactic: Command and Control | Severity: Critical (level 13)
+
+       Note: url field does not support pcre2 in Wazuh.
+       Any file download on a honeypot is inherently malicious.
+       C2 server 45.81.234.64 confirmed malicious — 11/91 VirusTotal vendors.
+  ================================================================ -->
+  <rule id="200010" level="13">
+    <decoded_as>json</decoded_as>
+    <field name="eventid">cowrie.session.file_download</field>
+    <description>Honeypot: CRITICAL — File download attempt detected — possible Mirai binary or malware staging from confirmed C2 infrastructure</description>
+    <mitre>
+      <id>T1105</id>
+    </mitre>
+    <group>malware,c2,mirai,critical</group>
+  </rule>
+
+  <!-- RULE 200011: Go-Based SSH Botnet Scanner — SSH-2.0-Go
+       MITRE: T1595 - Active Scanning
+       Tactic: Reconnaissance | Severity: Medium (level 11)
+
+       Real-world observation:
+       find_client_versions.py showed SSH-2.0-Go as the single most common
+       client version string with 62,372 occurrences — representing 66% of all
+       version events and far exceeding any legitimate SSH client. The Go SSH
+       library (golang.org/x/crypto/ssh) does not set a custom version banner
+       by default, so "SSH-2.0-Go" is the literal default string emitted by
+       custom-built Go tools such as scanner bots and automated exploit
+       frameworks. Notably, extract_ssh_keys.py confirmed that the mdrfckr
+       botnet — which performed 6,273 key injections — is primarily driven by
+       Go-based tooling, making SSH-2.0-Go an effective campaign fingerprint
+       for early detection before any login attempt succeeds. -->
+  <rule id="200011" level="11">
+    <decoded_as>json</decoded_as>
+    <field name="eventid">cowrie.client.version</field>
+    <field name="version" type="pcre2">SSH-2\.0-Go</field>
+    <description>Honeypot: Go-based SSH botnet scanner detected — mdrfckr campaign fingerprint SSH-2.0-Go identified.</description>
+    <mitre>
+      <id>T1595</id>
+    </mitre>
+    <group>reconnaissance,botnet,go_scanner</group>
+  </rule>
+
+</group>
