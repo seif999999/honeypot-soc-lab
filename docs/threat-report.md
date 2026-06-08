@@ -5,7 +5,6 @@
 |---|---|
 | **Author** | Seif Allah Nazmy |
 | **Date** | June 6, 2026 |
-| **Version** | 1.0 |
 | **Classification** | Public |
 | **TLP Classification** | TLP:CLEAR — Unrestricted distribution (formerly TLP:WHITE under TLP 1.0; equivalent under TLP 2.0) |
 | **Report ID** | HTI-2026-001 |
@@ -936,23 +935,14 @@ Hash `e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855` is the u
 
 The following custom detection rules were developed for this project and loaded into the Wazuh SIEM. Rules are stored in the project GitHub repository at `/siem/rules/`.
 
-### Phase 1 — Baseline Rules (Universal SSH Attack Patterns)
-
-| Rule ID | Level | Description | MITRE Technique |
-|---|---|---|---|
-| 200001 | 10 | SSH brute force — more than 5 failed logins from same IP in 60 seconds | T1110.001 |
-| 200002 | 12 | SSH login success after multiple failures — credential stuffing success indicator | T1078 |
-| 200003 | 14 | Post-login system enumeration — uname, whoami, id executed within same session | T1082 |
-| 200004 | 15 | SSH authorized_keys modification — potential backdoor key injection | T1098 |
-
-<div style="page-break-before: always"></div>
-
-### Phase 2 — Campaign-Specific Rules (Derived from Observed Data)
-
-The following rules target campaign-specific indicators identified in this dataset:
+**Phase 1 — Baseline Rules (Universal SSH Attack Patterns)** · **Phase 2 — Campaign-Specific Rules (Derived from Observed Data)**
 
 | Rule ID | Level | Description | MITRE Technique | Campaign |
 |---|---|---|---|---|
+| 200001 | 10 | SSH brute force — more than 5 failed logins from same IP in 60 seconds | T1110.001 | — |
+| 200002 | 12 | SSH login success after multiple failures — credential stuffing success indicator | T1078 | — |
+| 200003 | 14 | Post-login system enumeration — uname, whoami, id executed within same session | T1082 | — |
+| 200004 | 15 | SSH authorized_keys modification — potential backdoor key injection | T1098 | — |
 | 200005 | 15 | mdrfckr username detected — campaign-specific indicator, zero false positive risk | T1078 | mdrfckr |
 | 200006 | 15 | mdrfckr SSH key injection — canonical RSA key fingerprint detected in authorized_keys | T1098 | mdrfckr |
 | 200007 | 15 | Mirai hardcoded credential — username or password `345gs5662d34` detected | T1110.001 | Mirai |
