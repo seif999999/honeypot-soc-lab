@@ -35,7 +35,10 @@
    - 6.3 [Notable Session Replay](#63-notable-session-replay--mdrfckr-botnet)
 7. [MITRE ATT&CK Mapping](#7-mitre-attck-mapping)
 8. [Indicators of Compromise](#8-indicators-of-compromise)
-   - [8.4 C2 Infrastructure Pivot Analysis](#84-c2-infrastructure-pivot-analysis--458123464)
+   - 8.1 [Network IOCs](#81-network-iocs)
+   - 8.2 [Credential IOCs](#82-credential-iocs)
+   - 8.3 [File IOCs](#83-file-iocs)
+   - 8.4 [C2 Infrastructure Pivot Analysis](#84-c2-infrastructure-pivot-analysis--458123464)
 9. [Recommendations](#9-recommendations)
 10. [Conclusion](#10-conclusion)
 - [Appendix A: Tools Used](#appendix-a-tools-used)
@@ -150,6 +153,20 @@ The following limitations apply to this research and should be considered when i
 
 ## 3. Attack Overview
 
+> ⚠️ **Two dataset scopes — read this first:** This report draws on two overlapping Cowrie datasets. Numbers in different sections reflect the scope each source supports — both are correct for their context.
+>
+> | Scope | Events | Source | Used for |
+> |---|---|---|---|
+> | **Full indexed dataset** | **939,329** | All Cowrie JSON log files, bulk-indexed into OpenSearch/Wazuh | Headline totals in the overview table below; Wazuh dashboard figures in §3.2 (e.g. 48,485 failed logins, 84,082 commands, 10,756 downloads) |
+> | **Partial processed dataset** | **698,309** | Single log file processed by `parse_logs.py` | Per-event-type table in §3.3; frequency tables in §5–§6; MITRE mapping counts in §7 |
+> | **Script-specific counts** | Varies | Dedicated analysis scripts (`credential_analysis.py`, `command_tracker.py`, etc.) | Credential statistics (§5), command frequency (§6) |
+>
+> **Where you see two values for the same metric, this table explains why:**
+> - Failed logins: **48,485** (full/Wazuh) vs **24,383** (`parse_logs.py` / §3.3)
+> - Post-login commands: **84,082** (full/Wazuh) vs **70,697** (`parse_logs.py` / §3.3)
+> - Malware downloads: **10,756** (full/Wazuh) vs **7,027** (`parse_logs.py` / §3.3)
+> - Total events: **939,329** (full) vs **698,309** (`parse_logs.py` partial file)
+
 > **Definition:** Throughout this report, the term *event* refers to any discrete interaction logged by Cowrie, including connection attempts, authentication events (successful and failed), post-login commands, and file transfers. Not all events represent attack attempts — a single attacker session typically generates multiple events across different event types.
 
 | Metric | Value |
@@ -164,11 +181,9 @@ The following limitations apply to this research and should be considered when i
 | Unique passwords tried | 28,529 |
 | Post-login sessions recorded | 60,826 |
 | Malware download attempts | 10,756 |
-| MITRE ATT&CK techniques observed | 12 |
+| MITRE ATT&CK techniques observed | 13 |
 
-> **MITRE technique count:** The automated mapping script (`mitre_mapping.py`) identified 9 techniques in the partial dataset. Manual analysis of session content added 3 additional techniques (T1082, T1098, T1496) for a total of 12 observed techniques documented in §7.
-
-> **Note on dataset scope:** Headline totals in this table (939,329 events, 10,756 malware download attempts, 60,826 post-login sessions) reflect the full indexed dataset. Per-event-type breakdowns in §3.3 and the frequency tables in §5–§6 reflect the 698,309-event partial dataset processed by `parse_logs.py`, while credential and command counts derive from their respective analysis scripts. Where the same metric appears with two values (e.g., 10,756 vs 7,027 downloads, 84,082 vs 70,697 commands, 48,485 vs 24,383 failed logins), each value is correct for its respective dataset scope.
+> **MITRE technique count:** The automated mapping script (`mitre_mapping.py`) identified 9 techniques in the partial dataset. Manual analysis of session content added 3 additional observed techniques (T1082, T1098, T1496) plus 1 inferred technique (T1498 — Mirai DDoS purpose, not directly observed in honeypot sessions) for a total of 13 techniques documented in §7.
 
 ### 3.1 Attack Volume Timeline
 
@@ -289,7 +304,7 @@ Analysis of SSH client version strings reveals distinct attacker toolsets:
 - **Objective:** IoT device recruitment into botnet
 - **Targets:** Multiple CPU architectures (armv6l, mips, mipsel, sh4, x86)
 - **Signature:** 345gs5662d34 hardcoded credential — Mirai family fingerprint
-- **TTPs:** T1105 (Ingress Tool Transfer), T1498 (Network Denial of Service)
+- **TTPs:** T1082 (System Information Discovery), T1105 (Ingress Tool Transfer), T1498 (Network Denial of Service — inferred from Mirai family purpose, not directly observed)
 - **Attribution Confidence:** HIGH — confirmed malware binaries from single C2, hardcoded credential, architecture-specific payload delivery
 
 **Campaign 3: Generic Credential Stuffing Bots**
@@ -313,7 +328,7 @@ Analysis of SSH client version strings reveals distinct attacker toolsets:
 - **Scale:** 290 observed installation sessions
 - **Objective:** Unauthorized deployment of a legitimate server-monitoring agent for persistent access and management
 - **Signature:** `bash <(curl ... raw.githubusercontent.com/komari-monitor ...)` installer pattern
-- **TTPs:** T1059 (Command and Scripting Interpreter), T1071 (Application Layer Protocol)
+- **TTPs:** T1059 (Command and Scripting Interpreter)
 - **Attribution Confidence:** MEDIUM — behavioral clustering by identical installer command; no unique IP-level signature
 
 **Campaign 6: May 25 Carpet-Bombing**
@@ -388,7 +403,7 @@ This level of concurrent, non-overlapping attack activity against a single publi
 | Notable botnet credential | `345gs5662d34` | 6,146 attempts; hardcoded Mirai credential; not in RockYou |
 | Campaign-specific username | `mdrfckr` | Exclusive to mdrfckr botnet; paired with varied passwords |
 
-### 5.2 Top 20 Usernames Attempted
+### 5.2 Top 15 Usernames Attempted
 
 | Rank | Username | Attempts | Notes |
 |---|---|---|---|
@@ -410,7 +425,7 @@ This level of concurrent, non-overlapping attack activity against a single publi
 
 > **Note on `curl` as username (rank 8):** The presence of `curl` as a login username with 229 attempts is an artifact of automated attack tooling — bots that send malformed SSH handshakes with tool names embedded. It is not a real account target.
 
-### 5.3 Top 20 Passwords Attempted
+### 5.3 Top 15 Passwords Attempted
 
 | Rank | Password | Attempts | Classification |
 |---|---|---|---|
@@ -506,7 +521,7 @@ Four distinct post-login attack chains were observed repeatedly across the datas
 
 **Objective:** Deploy cryptocurrency mining software to monetize compromised server CPU cycles. The self-deletion in Step 5 indicates operational security awareness from this campaign operator.
 
-> **Note on redacted C2:** The bendi.py C2 server IP has been redacted from this public report. The full IOC including the C2 address is available in the project's IOC export at `docs/ioc-urls.csv` in the GitHub repository at github.com/seif999999/honeypot-soc-lab.
+> **Note on redacted C2:** See the IOC disclosure policy at the start of §8. The bendi.py C2 server IP is withheld from this public document; the full URL is in `docs/ioc-urls.csv` at github.com/seif999999/honeypot-soc-lab.
 
 Specific resources available in the repository:
 - Analysis scripts: `/analysis/`
@@ -671,14 +686,17 @@ komari-monitor is a legitimate open-source server monitoring and management tool
 | T1496 | Resource Hijacking | Impact | bendi.py cryptominer deployed to abuse server CPU cycles for cryptocurrency mining | 290 deployments | bendi.py campaign |
 | T1071 | Application Layer Protocol | Command and Control | SSH protocol used as primary C2 channel | 93,309 | mdrfckr, Mirai |
 | T1105 | Ingress Tool Transfer | Command and Control | wget/curl download of Mirai binaries and bendi.py | 7,027 | Mirai, bendi.py |
+| T1498 | Network Denial of Service | Impact | Inferred from Mirai binary purpose (DDoS botnet recruitment) — not directly observed; honeypot did not capture outbound attack traffic | Not observed (inferred) | Mirai variant |
 
-> **Dataset note:** Event counts in this table reflect the 698,309-event dataset processed by the automated MITRE mapping script (`mitre_mapping.py`). The full indexed dataset contains 939,329 events. All counts should be treated as **minimum observed frequencies** — actual totals across the full dataset are proportionally higher. Where specific counts are cited in the narrative below (e.g., "at minimum 6,273 SSH key injections", "at minimum 290 cryptominer deployments"), these figures represent confirmed lower bounds derived from the partial dataset. The techniques themselves and their associated campaigns are confirmed across both datasets. The T1059 count (77,900) reflects both successful `cowrie.command.input` events (70,697) and `cowrie.command.failed` events (7,203) logged by Cowrie. T1082 count (at minimum 18,432) derived from sessions containing post-login system profiling commands (uname, whoami, cat /proc/cpuinfo, free -m, lscpu, df -h) as counted by command_tracker.py. T1071 count (93,309) corresponds to cowrie.client.kex events — SSH protocol key exchange events logged per inbound connection.
+> **Dataset note:** Event counts in this table reflect the 698,309-event dataset processed by the automated MITRE mapping script (`mitre_mapping.py`). The full indexed dataset contains 939,329 events. All counts should be treated as **minimum observed frequencies** — actual totals across the full dataset are proportionally higher. Where specific counts are cited in the narrative below (e.g., "at minimum 6,273 SSH key injections", "at minimum 290 cryptominer deployments"), these figures represent confirmed lower bounds derived from the partial dataset. **T1498** is included as an inferred technique based on confirmed Mirai malware delivery and known Mirai family behavior; no DDoS execution was observed within the Cowrie emulation environment. The techniques themselves and their associated campaigns are confirmed across both datasets. The T1059 count (77,900) reflects both successful `cowrie.command.input` events (70,697) and `cowrie.command.failed` events (7,203) logged by Cowrie. T1082 count (at minimum 18,432) derived from sessions containing post-login system profiling commands (uname, whoami, cat /proc/cpuinfo, free -m, lscpu, df -h) as counted by command_tracker.py. T1071 count (93,309) corresponds to cowrie.client.kex events — SSH protocol key exchange events logged per inbound connection.
 
-The observed techniques form a coherent, end-to-end kill chain rather than isolated events. Reconnaissance begins with **T1595.001** scanning and **T1592** host information gathering, progressing to **T1133** external remote services access over the internet-exposed SSH service. Credential access follows via **T1110.001** (24,383 failed password-guessing events) and **T1110** brute force at scale (93,976 total credential attempts), with **T1078** valid account use once authentication succeeds (69,604 successful logins). Post-authentication activity immediately triggers **T1059** shell execution and **T1082** system information discovery to profile the target environment. Campaign-specific objectives diverge from this point: the mdrfckr botnet pursues **T1098** persistence via SSH key injection (**at minimum 6,273** observed instances); the Mirai variant executes **T1105** ingress tool transfer to stage architecture-specific binaries; the bendi.py campaign chains **T1105** with **T1496** resource hijacking (**at minimum 290** deployments). Throughout all campaigns, **T1071** SSH serves as both the initial attack vector and the persistent command channel. Protocol-level monitoring and honeypot-derived intelligence are critical for early detection before impact-stage techniques execute.
+The observed techniques form a coherent, end-to-end kill chain rather than isolated events. Reconnaissance begins with **T1595.001** scanning and **T1592** host information gathering, progressing to **T1133** external remote services access over the internet-exposed SSH service. Credential access follows via **T1110.001** (24,383 failed password-guessing events) and **T1110** brute force at scale (93,976 total credential attempts), with **T1078** valid account use once authentication succeeds (69,604 successful logins). Post-authentication activity immediately triggers **T1059** shell execution and **T1082** system information discovery to profile the target environment. Campaign-specific objectives diverge from this point: the mdrfckr botnet pursues **T1098** persistence via SSH key injection (**at minimum 6,273** observed instances); the Mirai variant executes **T1105** ingress tool transfer to stage architecture-specific binaries, with **T1498** (Network Denial of Service) inferred as the intended post-recruitment impact based on Mirai family behavior; the bendi.py campaign chains **T1105** with **T1496** resource hijacking (**at minimum 290** deployments). Throughout all campaigns, **T1071** SSH serves as both the initial attack vector and the persistent command channel. Protocol-level monitoring and honeypot-derived intelligence are critical for early detection before impact-stage techniques execute.
 
 ---
 
 ## 8. Indicators of Compromise
+
+> **IOC disclosure policy:** Attacker-controlled infrastructure (confirmed-malicious C2 IPs, malware hosting URLs) is published in full in this report. The **bendi.py C2 server IP is redacted** because it is single-host, attacker-operated infrastructure that may still be active at time of publication; the complete URL is available in `docs/ioc-urls.csv` in the project repository. The **komari-monitor GitHub installer URL is not redacted** because it points to a legitimate, publicly hosted open-source repository — not attacker infrastructure. The actionable IOC for that campaign is the unauthorized curl-pipe-to-bash deployment pattern observed in session logs, not the GitHub host itself. Defenders should alert on the installer command pattern rather than block the public GitHub domain.
 
 ### 8.1 Network IOCs
 
@@ -826,7 +844,9 @@ The following recommendations are derived directly from observed attack patterns
 
 ## 10. Conclusion
 
-Over a **21-day collection period** from May 13 to June 3, 2026, this honeypot captured **939,329 attack events** from **2,685 unique IP addresses** across **101 countries** — evidence that the internet's threat landscape is not theoretical, but active, automated, and indiscriminate. Six distinct attack clusters operated concurrently: the **mdrfckr botnet** injecting a shared SSH backdoor key across **1,342 compromised nodes**, a **Mirai variant** staging architecture-specific binaries from high-confidence malicious infrastructure (15/91 VirusTotal detections at time of analysis) at **45.81.234.64**, the **bendi.py cryptomining campaign** deploying CPU-hijacking malware through a fully scripted attack chain, the **komari-monitor cluster** deploying a server-monitoring agent via a curl-pipe-to-bash installer, a high-volume **generic credential-stuffing cluster** (libssh-based), and the **May 25 carpet-bombing operation** in which two IP addresses generated 429,301 events in a single day through nine hours of sustained high-volume attacks. AbuseIPDB enrichment of the top attacking IPs returned a **99/100 malicious confirmation rate** *(Source: AbuseIPDB API enrichment via `ioc_export.py` — full results available at `/docs/ioc-ips.csv` in the project repository. Score threshold for malicious classification: ≥50 confidence score.)*, validating that the overwhelming majority of inbound connections originated from known-bad infrastructure. The **May 25 spike** — **429,301 events** in a single day driven by two IPs conducting nine hours of sustained carpet-bombing — demonstrates that botnet operators can concentrate firepower without warning. The first attack arrived **47 seconds** after deployment; every public IP faces this exposure timeline.
+Over a **21-day collection period** from May 13 to June 3, 2026, this honeypot captured **939,329 attack events** from **2,685 unique IP addresses** across **101 countries** — evidence that the internet's threat landscape is not theoretical, but active, automated, and indiscriminate. Six distinct attack clusters operated concurrently: the **mdrfckr botnet** injecting a shared SSH backdoor key across **1,342 compromised nodes**, a **Mirai variant** staging architecture-specific binaries from high-confidence malicious infrastructure (15/91 VirusTotal detections at time of analysis) at **45.81.234.64**, the **bendi.py cryptomining campaign** deploying CPU-hijacking malware through a fully scripted attack chain, the **komari-monitor cluster** deploying a server-monitoring agent via a curl-pipe-to-bash installer, a high-volume **generic credential-stuffing cluster** (libssh-based), and the **May 25 carpet-bombing operation** in which two IP addresses generated 429,301 events in a single day through nine hours of sustained high-volume attacks. AbuseIPDB enrichment of the top attacking IPs returned a **99/100 malicious confirmation rate**², validating that the overwhelming majority of inbound connections originated from known-bad infrastructure. The **May 25 spike** — **429,301 events** in a single day driven by two IPs conducting nine hours of sustained carpet-bombing — demonstrates that botnet operators can concentrate firepower without warning. The first attack arrived **47 seconds** after deployment; every public IP faces this exposure timeline.
+
+*² AbuseIPDB API enrichment via `ioc_export.py` — full results at `/docs/ioc-ips.csv` in the project repository. Malicious classification threshold: ≥50 confidence score.*
 
 To contextualize the risk for defenders: had this been an unprotected production server rather than a honeypot, the mdrfckr campaign would have established permanent backdoor access within seconds of the first successful login — granting the operator persistent SSH entry that survives password resets, account deletions, and most incident response procedures short of full server rebuild. The Mirai variant would have enrolled the server into a DDoS botnet, potentially making the organization legally and operationally liable for attacks on third parties. The bendi.py campaign would have consumed server CPU resources for cryptocurrency mining, increasing cloud compute costs and degrading application performance — often going undetected for weeks or months. All three payload campaign outcomes would have occurred within the first 48 hours of exposure, before most organizations would even notice anomalous behavior in their logs. Separately, the May 25 carpet-bombing campaign would have caused sustained service degradation and resource exhaustion for nine consecutive hours — overwhelming authentication subsystems, filling log volumes, and potentially triggering account lockouts or rate-limit collateral damage on legitimate users.
 
@@ -839,7 +859,7 @@ For defenders, the data is unambiguous: **password-only SSH authentication witho
 |---|---|---|
 | Cowrie | 2.9.19.dev24+g3a66dd2d3 | SSH Honeypot |
 | Wazuh | 4.9.0 | SIEM and alerting |
-| Filebeat | 7.17.28 | Log shipping |
+| Filebeat | Not recorded (Ubuntu apt package; version not captured at install) | Log shipping |
 | Tailscale | Latest (verified June 2026) | Secure tunnel |
 | Python | 3.10 | Log analysis scripts |
 
@@ -925,7 +945,11 @@ The following custom detection rules were developed for this project and loaded 
 | 200003 | 14 | Post-login system enumeration — uname, whoami, id executed within same session | T1082 |
 | 200004 | 15 | SSH authorized_keys modification — potential backdoor key injection | T1098 |
 
+<div style="page-break-before: always"></div>
+
 ### Phase 2 — Campaign-Specific Rules (Derived from Observed Data)
+
+The following rules target campaign-specific indicators identified in this dataset:
 
 | Rule ID | Level | Description | MITRE Technique | Campaign |
 |---|---|---|---|---|
@@ -944,7 +968,7 @@ The following custom detection rules were developed for this project and loaded 
 ## Appendix D: References
 
 ### Frameworks and Standards
-- MITRE ATT&CK Framework v14: https://attack.mitre.org
+- MITRE ATT&CK Framework v16: https://attack.mitre.org
 - TLP (Traffic Light Protocol) 2.0 definitions: https://www.cisa.gov/tlp (TLP:WHITE was renamed TLP:CLEAR under TLP 2.0)
 
 ### Tools and Platforms
